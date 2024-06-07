@@ -635,7 +635,7 @@ Should you have any inquiries or requests, please do not hesitate to contact me.
 
 # Update History
 
-- v1.0.0 (June 1, 2024)
+- v1.0.1 (June 1, 2024)
 
   1. Initial release.
 
