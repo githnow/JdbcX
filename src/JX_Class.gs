@@ -582,7 +582,6 @@ function getConnection(config) {
       if (this.config.prefix !== 'jdbc:google:mysql://' && 
           this.config.prefix !== 'jdbc:mysql://') {
         throw new Error("Unsupported database type");
-        // returnObject = false;
       }
 
       var query = "SHOW INDEX FROM " + table;
