@@ -590,6 +590,88 @@ In Google Apps Script, user scripts run in a single thread, which affects the tr
 
 It's advisable to use regular library methods for a large number of small read requests, while asynchronous methods are more suitable for operations involving writing or reading large volumes of data.
 
+<a name="benchmark"></a>
+
+# Benchmarking
+
+Benchmarking was conducted using a custom script [JdbcX_PerformanceTest](benchmark/JdbcX_PerformanceTest.gs). During data writing tests, rows of data were generated randomly. The time taken to generate each row was subtracted from the total time to exclude data generation from the final results.
+
+In multithreaded mode (function `AsyncMany`), the following algorithm was applied: 
+- Up to 100 rows: one thread
+- From 100 to 5000 rows: 10 threads
+- More than 5000 rows: 15 threads
+
+At all stages, the total number of successfully processed data and sent data were verified. In some cases, when using 15 threads and more than 5000 rows, an additional 5-10 rows were requested, which is negligible given the total amount. Methods that exceeded the script execution time limit were manually disabled for larger datasets, and benchmarking continued with the remaining methods. The results are presented below.
+
+### Data Writing Benchmark Results:
+
+![Data Writing Benchmark Results](benchmark/img/writing_data.png)
+
+### Data Reading Benchmark Results:
+
+![Data Reading Benchmark Results](benchmark/img/reading_data.png)
+
+<a name="updates"></a>
+
+# Updates
+
+By using the automatic update feature, you can streamline the process of maintaining your deployment up-to-date. If the files of the original library are updated, your JdbcX project will automatically download and apply the necessary changes in the script. You will only need to re-publish the WebApp and Library, and update the respective version of the library and WebApp URL in the script to which your deployment is connected.
+
+Since this feature requires additional permissions and scopes, activation steps are left up to the user.
+
+If periodic updates to your JdbcX deployment are not needed, you can simply delete the **JX_Updates** file without any consequences.
+
+## How to Enable Auto-Update for Deployment:
+
+1. Add the additional dependencies and scopes to your appsscript file:
+```json
+{
+  "dependencies": {
+    "enabledAdvancedServices": [
+      {
+        "userSymbol": "Drive",
+        "serviceId": "drive",
+        "version": "v3"
+      }
+    ],
+    "libraries": [
+      {
+        "userSymbol": "ScriptSync5",
+        "libraryId": "1ijCPBlDiWkkywV1vO0k720mkxAWTQBhZ2aWG5OfOwG3qfziYF37wSu0k",
+        "version": "1",
+        "developmentMode": false
+      }
+    ]
+  },
+  "oauthScopes": [
+    "https://www.googleapis.com/auth/drive.readonly",
+    "https://www.googleapis.com/auth/drive.scripts",
+    "https://www.googleapis.com/auth/drive.file",
+    "https://www.googleapis.com/auth/drive",
+    "https://www.googleapis.com/auth/userinfo.email",
+  ]
+}
+```
+
+2. Copy the **JX_Updates** file to your deployment (if it does not exist) from the following link: [JX_Updates](src/JX_Updates.gs).
+3. Run the function `updatesEnable_STABLE()` from the JdbcX script in your deployment.
+
+## How It Works:
+
+After running the function, a scheduled trigger in your deployment will check the contents of the original **WhatsNew.html** file. If differences are detected, the following files within the deployment will be replaced:
+- All files with the **JX** prefix
+- common.gs
+- jdbc_types.gs
+- tools.gs
+- types.gs
+- WhatsNew.html
+
+Other files, including appsscript, will not be modified.
+
+To temporarily disable this feature, use the `updatesDisable()` function.
+
+> **Important!** The update can only be initiated by the deployment owner, and only from the deployment's **JX_Updates** file.
+
 <a name="quotas"></a>
 
 # Limitations
@@ -634,6 +716,10 @@ Should you have any inquiries or requests, please do not hesitate to contact me.
 <a name="updatehistory"></a>
 
 # Update History
+
+- v1.0.2 (June 11, 2024)
+
+  1. Added an automatic update feature for deployments.
 
 - v1.0.1 (June 1, 2024)
 
