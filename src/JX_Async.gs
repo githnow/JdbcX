@@ -227,7 +227,8 @@ JdbcX.prototype.executeQueryAsync = function() { return executeQueryAsync.apply(
  * @memberof {JdbcX}
  *
  * @param {string} sql The SQL update statement to execute.
- * @param {string=} db The name of the database to execute the update against.
+ * @param {string=} db __Optional__: The name of the database to execute
+ *     the update against.
  *
  * @returns {number} Either (1) the row count for SQL Data Manipulation Language (DML)
  *     statements or (2) 0 for SQL statements that return nothing.
@@ -316,7 +317,7 @@ JdbcX.prototype.queryDatabaseAsync = function() { return queryDatabaseAsync.appl
  *
  * @returns {number} The row count for SQL Data Manipulation Language (DML) statements (1).
  */
-function insertIntoAsync(sql, db) {
+function insertIntoAsync(table, columns, values, db) {
   var resource = {
       functionName: "_insertInto",
       arguments: Array.prototype.slice.call(arguments),
@@ -363,7 +364,7 @@ JdbcX.prototype.insertIntoAsync = function() { return insertIntoAsync.apply(this
  * @param {queryFilter} filter The filter object to apply to the query, which can contain
  *     properties such as `column`, `value`, `value_from`, `value_to`, `toUnixTime`,
  *     `sort`, `direction`, `limit` and `offset`.
- * @param {string} db The name of the database to query.
+ * @param {string=} db __Optional__: The name of the database to query.
  *
  * @return {Array<Object>|Object} The data retrieved from the database, either as an
  *     array of arrays or an array of objects based on the return type.
@@ -401,13 +402,13 @@ JdbcX.prototype.retrieveDataFromDBAsync = function() { return retrieveDataFromDB
  * @param {string} sql_query The SQL query to be executed.
  * @param {Array<string>} columns The columns to retrieve, used for validation and
  *     restructuring the query in case of errors.
- * @param {string} db The name of the database to query.
+ * @param {string=} db __Optional__: The name of the database to query.
  *
  * @return {Array<object>} An array of objects, where each object represents a row of
  *     data with key-value pairs for column names and their corresponding values.
  *     If an error occurs beyond the allowed retries, an empty array is returned.
  */
-function getTableAsObjectAsync(sql, db) {
+function getTableAsObjectAsync(sql_query, columns, db) {
   var resource = {
       functionName: "_getTableAsObject",
       arguments: Array.prototype.slice.call(arguments),
@@ -439,7 +440,7 @@ JdbcX.prototype.getTableAsObjectAsync = function() { return getTableAsObjectAsyn
  * @param {string} sql_query The SQL query to be executed.
  * @param {Array<string>} columns The columns to retrieve, used for validation and
  *     restructuring the query in case of errors.
- * @param {string} db The name of the database to query.
+ * @param {string=} db __Optional__: The name of the database to query.
  *
  * @return {object} An object containing the results of the query with the following
  *     properties:
@@ -448,7 +449,7 @@ JdbcX.prototype.getTableAsObjectAsync = function() { return getTableAsObjectAsyn
  *     - `items`: The number of rows retrieved.
  *     If an error occurs beyond the allowed retries, an empty object is returned.
  */
-function getTableAsArrayAsync(sql, db) {
+function getTableAsArrayAsync(sql_query, columns, db) {
   var resource = {
       functionName: "_getTableAsArray",
       arguments: Array.prototype.slice.call(arguments),
