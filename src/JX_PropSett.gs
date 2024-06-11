@@ -37,7 +37,9 @@ function getJXAppURL() {
 function setJXAppURL(url, password) {
   if (!url) throw new Error("URL is not valid.");
   password = password === undefined ? null: password;
-  return getSetting_("password") === password ? setSetting_("jdbcx_url", url) : false;
+  return getSetting_("password") === password
+    ? (deletePropUpdated_(), setSetting_("jdbcx_url", url))
+    : false;
 }
 
 
@@ -159,5 +161,43 @@ function setProp_(property, value) {
   }
 
   return true;
+}
+
+
+/**
+ * Sets the 'JDBCXUpdated' property in the script properties to 'true'.
+ * @name private_
+ */
+function setPropUpdated_() {
+  setProp_("JDBCXUpdated", true);
+}
+
+
+/**
+ * Retrieves the value of the 'JDBCXUpdated' property from the script properties.
+ * @name private_
+ * @returns {boolean} The value of the 'JDBCXUpdated' property,
+ *     which will be either 'true' or 'null'.
+ */
+var propUpdated = function() {
+  return (
+    PropertiesService
+      .getScriptProperties()
+      .getProperty("JDBCXUpdated")
+  );
+}();
+
+
+/**
+ * Deletes the 'JDBCXUpdated' property from the script properties.
+ * @name private_
+ */
+function deletePropUpdated_() {
+  try {
+    var properties = PropertiesService.getScriptProperties();
+    properties.deleteProperty("JDBCXUpdated");
+  } catch (e) {
+    console.error(e);
+  }
 }
 
