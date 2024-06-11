@@ -368,7 +368,7 @@ JdbcX.prototype.insertIntoAsync = function() { return insertIntoAsync.apply(this
  * @return {Array<Object>|Object} The data retrieved from the database, either as an
  *     array of arrays or an array of objects based on the return type.
  */
-function retrieveDataFromDBAsync(sql, db) {
+function retrieveDataFromDBAsync(table, columns, returnType, filter, db) {
   var resource = {
       functionName: "_retrieveDataFromDB",
       arguments: Array.prototype.slice.call(arguments),
