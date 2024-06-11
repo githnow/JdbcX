@@ -111,7 +111,8 @@ JdbcX.prototype.AsyncDoMany = function() { return AsyncDoMany.apply(this, argume
 
 /**
  * ### Description
- * The `next` function is an iterator method that retrieves the next result from the executed tasks. It returns an object with the properties:
+ * The `next` function is an iterator method that retrieves the next result
+ * from the executed tasks. It returns an object with the properties:
  * - `ix`: The current index of the iteration.
  * - `done`: A boolean indicating if the iteration is complete.
  * - `value`: The result of the function execution.
@@ -121,7 +122,8 @@ JdbcX.prototype.AsyncDoMany = function() { return AsyncDoMany.apply(this, argume
  *
  * @name next
  * @memberof {AsyncDoMany}
- * @return {JX_ManyNext} An object containing the result of the next task or indicating the iteration is complete.
+ * @return {JX_ManyNext} An object containing the result of the next task
+ *      or indicating the iteration is complete.
  */
 function empty_next() {}
 
