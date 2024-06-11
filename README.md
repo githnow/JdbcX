@@ -14,7 +14,7 @@
 # Description
 
 JdbcX is a practical solution that combines a library and a WebApp to expand the functionality of the standard Google Apps Script Jdbc service. It accelerates query processing and supports asynchronous execution.
-The library application functionality has been tested with MySQL databases, with experimental support for PostgreSQL and SQL Server.
+The library application functionality has been tested with MySQL databases, with experimental support for Microsoft SQL Server.
 
 # Library's project key
 
