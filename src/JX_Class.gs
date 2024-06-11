@@ -53,6 +53,11 @@
  * @return {JdbcX} A new instance of the JdbcX class.
  */
 function getConnection(config) {
+  try {
+    if (propUpdated) notifyUpdates();
+  } catch (e) {
+    //
+  }
   return new JdbcX(config);
 };
 
@@ -439,14 +444,14 @@ function getConnection(config) {
           }
           break;
         case 'jdbc:postgresql://':
-          // the following lines was generated ChatGPT by OpenAI:
+          // the following lines were generated ChatGPT by OpenAI:
           query = "SELECT datname FROM pg_database";
           if (includeSystem !== true) {
             query += " WHERE datname NOT IN ('template0', 'template1', 'postgres')";
           }
           break;
         case 'jdbc:sqlserver://':
-          // the following lines was generated ChatGPT by OpenAI:
+          // the following lines were generated ChatGPT by OpenAI:
           query = "SELECT name FROM sys.databases";
           if (includeSystem !== true) {
             query += " WHERE name NOT IN ('master', 'tempdb', 'model', 'msdb')";
@@ -582,6 +587,7 @@ function getConnection(config) {
       if (this.config.prefix !== 'jdbc:google:mysql://' && 
           this.config.prefix !== 'jdbc:mysql://') {
         throw new Error("Unsupported database type");
+        // returnObject = false;
       }
 
       var query = "SHOW INDEX FROM " + table;
