@@ -239,6 +239,8 @@ const result = connection.execute('SELECT * FROM example_table');
 | getUserGrants                                | Retrieves user grants from the database.                                                                                                          |
 | getUserList                                  | Retrieves a list of users from the database.                                                                                                      |
 | getVariables                                 | Retrieves variables from the database.                                                                                                            |
+| getRowCount                                  | Gets the number of records from a database based on a provided SQL query.                                                                         |
+| getRowCountByFilter                          | Gets the number of records in a specified table in the database that match the given filter criteria.                                             |
 | **Async**                                    |                                                                                                                                                   |
 | AsyncDoMany                                  | Executes multiple asynchronous tasks and returns an iterator. Each task is defined by the function and its arguments.                             |
 | executeAsync                                 | Asynchronously executes a SQL statement on the specified database.                                                                                |
@@ -682,13 +684,10 @@ The limitations of this library are primarily tied to the general quota on the n
 
 # Known Issues
 
-1. **Data Type Detection in Async Functions:**
-   - Automatic detection of data types in some functions using Async is not currently supported. Complex objects and functions need to be converted to string types. This includes date objects like `new Date()`, blobs, and other complex objects.
-
-2. **Error Handling:**
+1. **Error Handling:**
    - In Async functions, it is recommended to set the **muteSQLException** parameter to `false` to catch errors on the user's script side.
 
-3. **Request Retries:**
+2. **Request Retries:**
    - There is no built-in retry mechanism for failed data send/receive requests. Users need to manage this process manually.
 
 These limitations and issues are important to consider when using the library to ensure smooth and efficient operation within the bounds of Google Apps Script quotas and capabilities.
@@ -716,6 +715,20 @@ Should you have any inquiries or requests, please do not hesitate to contact me.
 <a name="updatehistory"></a>
 
 # Update History
+
+- v1.0.4 (June 15, 2024)
+
+  1. Added new methods:
+     - Database table operations: 2 methods of [getRowCount](#methods_class) and [getRowCountByFilter](#methods_class) were added.
+  2. Updated insertArrayToDBTable:
+     - Added support for Async methods.
+     - Improved data type detection with "detectTypes" option.
+     - Introduced "batchSize" option.
+  3. Fixed bugs.
+
+- v1.0.3 (June 11, 2024)
+
+  1. Fixed incorrect argument names.
 
 - v1.0.2 (June 11, 2024)
 
