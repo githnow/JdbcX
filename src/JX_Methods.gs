@@ -6,7 +6,7 @@
 
 /**
  * Executes a given SQL query on the specified database and returns the resulting
- * `JdbcResultSet` object. The query is executed using a statement created from the
+ * of execute. The query is executed using a statement created from the
  * database connection.
  *
  * ### Return
@@ -41,15 +41,15 @@ var executeQuery = "executeQuery";
 /**
  * Executes an SQL update statement (INSERT, UPDATE, DELETE) against
  * the specified database.
- * 
+ *
  * ### Return
- * {number} Either (1) the row count for SQL Data Manipulation Language (DML) 
- * statements or (2) 0 for SQL statements that return nothing.
- * 
+ * {number} Either the row count for SQL Data Manipulation Language (DML)
+ * statements, or 0 for SQL statements that return nothing.
+ *
  * @see executeUpdate
  * @memberof {METHODS}
  * @property {string} sql The SQL update statement to execute.
- * @property {string} [db] The name of the database to execute the update against.
+ * @property {string} [db] __Optional__: The name of the database to execute the update against.
  */
 var executeUpdate = "executeUpdate";
 
@@ -60,7 +60,7 @@ var executeUpdate = "executeUpdate";
  * element in the inner array representing a column value.
  *
  * ### Return
- * {Array<Array<string>>} An array of arrays containing the result set rows
+ * {Array[]} An array of arrays containing the result set rows
  * and columns. If an error occurs, an empty array is returned.
  *
  * @see queryDatabase
@@ -73,15 +73,15 @@ var queryDatabase = "queryDatabase";
 
 /**
  * Inserts a record into the specified database table.
- * 
+ *
  * ### Return
  * {number} The row count for SQL Data Manipulation Language (DML) statements (1).
- * 
+ *
  * @see insertInto
  * @memberof {METHODS}
  * @property {string} table The name of the database table to insert data into.
- * @property {Array<string>} columns An array of column names to insert data into.
- * @property {Array<any>} values An array of values to insert corresponding to the columns.
+ * @property {string[]} columns An array of column names to insert data into.
+ * @property {any[]} values An array of values to insert corresponding to the columns.
  * @property {string} [db] __Optional__: The name of the database to connect to.
  */
 var insertInto = "insertInto";
@@ -94,21 +94,36 @@ var insertInto = "insertInto";
  * object based on the specified return type.
  *
  * ### Return
- * {Array<Object>|Object} The data retrieved from the database, either
- * as an array of arrays or an array of objects based on the return type.
- * 
+ * __Array__ or __Object__. The data retrieved from the database, either
+ * as an array of arrays or an array of objects based on the return type:
+ *   - 0 - Returns data as an array of nested objects, where each object represents a row.
+ *   - 1 - Returns data as an object with arrays, where each array represents a column.
+ *
+ * #### Filter contain the options:
+ *   - `column`: The name of the column to filter on.
+ *   - `value`: The value to match in the specified column (WHERE '=').
+ *   - `value_from`: The starting value for range-based filtering (WHERE '>').
+ *   - `value_to`: The ending value for range-based filtering (WHERE '<').
+ *   - `toUnixTime`: Indicates whether to convert the dates of the filter
+ *     values to a timestamp (UNIX format).
+ *   - `sort`: The column name to use for sorting.
+ *   - `direction`: The sorting direction
+ *     ('asc' for ascending, 'desc' for descending).
+ *   - `limit`: The maximum number of records to return.
+ *   - `offset`: The number of records to skip before returning results.
+ *   - `like`: Matching. The value to match using LIKE %...%.
+ *   - `notlike`: Matching. The value to exclude using NOT LIKE.
+ *   - `regex`: Matching. The regular expression to match REGEXP.
+ * If the `filter` parameter is an array of objects,
+ * the conditions will be combined using the AND operator.
+ *
  * @see retrieveDataFromDB
  * @memberof {METHODS}
  * @property {string} table The name of the database table to query.
- * @property {string|Array<string>} columns The columns to retrieve, either as a comma-
- *     separated string or an array of strings.
- * @property {number} [returnType] The return type, default is `0`:
- *     0 - Returns data as an array of nested objects, where each object represents a row.
- *     1 - Returns data as an object with arrays, where each array represents a column.
- * @property {queryFilter} filter The filter object to apply to the query, which can contain
- *     properties such as `column`, `value_from`, `value_to`, `toUnixTime`, `sort`,
- *     `direction`, and `limit`.
- * @property {string} db The name of the database to query.
+ * @property {string|Array<string>} columns The columns to retrieve as a string or array of strings.
+ * @property {number} [returnType] The return type, default is `0`.
+ * @property {queryFilter|queryFilter[]} [filter] The filter object(s) to apply to the query.
+ * @property {string} [db] __Optional__: The name of the database to query.
  */
 var retrieveDataFromDB = "retrieveDataFromDB";
 
@@ -121,16 +136,15 @@ var retrieveDataFromDB = "retrieveDataFromDB";
  * query each time.
  *
  * ### Return
- * {Array<Object>} An array of objects, where each object represents a row of
+ * {Object[]} An array of objects, where each object represents a row of
  * data with key-value pairs for column names and their corresponding values.
  * If an error occurs beyond the allowed retries, an empty array is returned.
  *
  * @see getTableAsObject
  * @memberof {METHODS}
  * @property {string} sql_query The SQL query to be executed.
- * @property {Array<string>} columns The columns to retrieve, used for validation and
- *     restructuring the query in case of errors.
- * @property {string} db The name of the database to query.
+ * @property {string[]} columns The columns to retrieve.
+ * @property {string} [db] __Optional__: The name of the database to query.
  */
 var getTableAsObject = "getTableAsObject";
 
@@ -152,9 +166,8 @@ var getTableAsObject = "getTableAsObject";
  * @see getTableAsArray
  * @memberof {METHODS}
  * @property {string} sql_query The SQL query to be executed.
- * @property {Array<string>} columns The columns to retrieve, used for validation and
- *     restructuring the query in case of errors.
- * @property {string} db The name of the database to query.
+ * @property {string[]} columns The columns to retrieve.
+ * @property {string} [db] __Optional__: The name of the database to query.
  */
 var getTableAsArray = "getTableAsArray";
 
@@ -167,21 +180,36 @@ var getTableAsArray = "getTableAsArray";
  * ### Return
  * {boolean} A boolean value indicating whether the data was successfully
  * inserted into the database table.
- * 
+ *
+ * #### Options include:
+ *   - `db`: The name of the database to connect to. If not provided, the default
+ *     database is used.
+ *   - `autoCommit`: A boolean indicating whether to automatically commit
+ *     the transaction. Defaults to `false`.
+ *   - `batchSize`: A positive integer, when autoCommit is enabled, determines
+ *     the number of records that will be grouped and sent to the database
+ *     in a single batch operation. The default value is `100`.
+ *   - `updateDuplicates` or `updateDupls`: A boolean indicating whether to update
+ *     duplicate entries if they exist in the table. Defaults to `false`.
+ *   - `detectTypes`: A boolean indicating whether to automatically detect
+ *     the data types in the array and use them for the insert operation.
+ *     If set to `true`, the library will analyze the data being inserted
+ *     and determine the appropriate data types for each column.
+ *     If detectTypes is set to `false`, all data will be treated as strings,
+ *     regardless of the `stringTypes` option.
+ *     Enable it if you use date values in the date format, blob objects,
+ *     boolean values, or if you need strict compliance with data types.
+ *     Defaults to `true`.
+ *   - `stringTypes`: An array of data types that should be treated as strings
+ *     (e.g., `integer`, `double`, `object`, `array`, `boolean`) when
+ *     the `detectTypes` option is enabled.
+ *
  * @see insertArrayToDBTable
  * @memberof {METHODS}
  * @property {string} table The name of the database table to insert data into.
- * @property {Array<string>} columns An array containing the column headers of the table.
- * @property {Array<Array<any>>} data An array of arrays representing the data to be inserted.
- * @property {Object} [options] Additional options for customizing the insert operation:
- *   - `db`: The name of the database to connect to. If not provided, the default
- *     database is used.
- *   - `autoCommit`: A boolean indicating whether to automatically commit the transaction.
- *     Defaults to `false`.
- *   - `updateDuplicates` or `updateDupls`: A boolean indicating whether to update
- *     duplicate entries if they exist in the table. Defaults to `false`.
- *   - `stringTypes`: An array of data types that should be treated as strings
- *     (e.g., `integer`, `double`, `object` | `array`, `boolean`).
+ * @property {string[]} columns An array containing the column headers of the table.
+ * @property {any[][]} data An array of arrays representing the data to be inserted.
+ * @property {Object} [options] Additional options for customizing the insert operation.
  */
 var insertArrayToDBTable = "insertArrayToDBTable";
 
