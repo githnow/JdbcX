@@ -2,7 +2,7 @@
  * ### Description
  * Retuns date and time with specified format from any date format.
  *
- * The offset is specified relative to the time zone of the project.
+ * An additional offset in relation to the project's time zone.
  *
  * ### Sample
  * ```
@@ -46,17 +46,19 @@
  * console.log("DTF11:", dateTimeFormat("2022/12/30", 'yyyy-MM-dd HH:mm:ss', offset=0));
  * ```
  *
- * Return DateTime.
+ * Return the formatted DateTime.
  *
  * @param {any} dateTime __current__:  _None or any datetime_
  * @param {string} format __current__:  _None or 'unix' for unix-timestamp_
  *     __or__:  _Date format string for stringified date_
+ *     __or__:  _'date' for date format_
+ *     __or__:  _'jdbc' for jdbc format_
  * @param {integer} offset __current__:  _Extra offset (hours)._
- *     Offset is specified relative to the time zone of the script.
+ *     Offset is added to the script's time zone.
  * @param {boolean} truncTime __current__:  _Trancated time of day to 00:00:00.000_
  * @param {boolean} greedyTime __current__:  _Extends time of day to 23:59:59.999_
  * @param {boolean} raiseOnError __current__:  _Default is false_
- * @return {integer|string}    DateTime.
+ * @return {integer|string} Formatted DateTime.
  */
 function dateTimeFormat(dateTime, format, offset, truncTime, greedyTime, raiseOnError) {
   "use_strict";
@@ -83,12 +85,10 @@ function dateTimeFormat(dateTime, format, offset, truncTime, greedyTime, raiseOn
   }
 
   var ScriptTimeZone = Session.getScriptTimeZone();
-  var errorMessage = 'Wrong date time format.';
 
   format = !format ? 'unix' : format;
   offset = !offset ? 0 : offset;
   raiseOnError = !raiseOnError ? false : raiseOnError;
-
 
   if (!dateTime) {
     dateTime = new Date();
@@ -115,20 +115,23 @@ function dateTimeFormat(dateTime, format, offset, truncTime, greedyTime, raiseOn
   } else if (greedyTime == true) {
     dateTime.setHours(23, 59, 59, 999);
   }
+  dateTime.setHours(dateTime.getHours() + offset);
 
-  var offset_ = offset;
-
-  dateTime.setHours(dateTime.getHours() + offset_);
-  if (!format || format === "unix") {
+  if (format === "unix") {
     // unix format
     dateTime = Math.floor(dateTime / 1000);
+  } else if (format === "date") {
+    return dateTime;
+  } else if (format === "jdbc") {
+    dateTime = Utilities.formatDate(dateTime, ScriptTimeZone, "yyyy-MM-dd HH:mm:ss");
+    dateTime = Jdbc.parseTimestamp(dateTime);
   } else {
     try {
       dateTime = Utilities.formatDate(dateTime, ScriptTimeZone, format);
     } catch (e) {
       console.error(e.message);
       if (raiseOnError) {
-        throw new Error(errorMessage);
+        throw new Error('Wrong date time format.');
       }
     }
   }
@@ -136,11 +139,19 @@ function dateTimeFormat(dateTime, format, offset, truncTime, greedyTime, raiseOn
   return dateTime;
 }
 
+/**
+ * @constant {number}
+ * @description Unix timestamp for the current date with the time set to 00:00:00.
+ */
 var CURRENT_DATE_STAMP = function() {
   // unix timestamp date
   return Math.floor(new Date().setHours(0, 0, 0, 0) / 1000);
 }();
 
+/**
+ * @constant {number}
+ * @description Unix timestamp for the current time.
+ */
 var CURRENT_TIME_STAMP = function() {
   // unix time
   return Math.floor(new Date() / 1000);
