@@ -16,7 +16,7 @@
  * arguments, and an optional tag. The function aggregates all tasks and executes
  * them, returning an iterator that allows for the retrieval of each task's result
  * one by one using the `next` method.
- * 
+ *
  * The method is capable of running up to 20 parallel threads simultaneously.
  *
  * ### Example
@@ -64,6 +64,14 @@ function AsyncDoMany(tasks) {
     var args = task.length > 1 ? task[1] : [];
     var tag = task.length > 2 ? task[2] : "";
     if (fn && fn in METHODS) {
+      if (fn === 'insertArrayToDBTable'
+          && args && args[2] !== undefined
+          && args[3] !== undefined
+          && args[3].hasOwnProperty('detectTypes')
+          && args[3].detectTypes === true)
+        {
+        args[2] = {'Async': addMetaData_(args[2])};
+      }
       resource.push({
         functionName: fn,
         arguments: args,
@@ -269,7 +277,6 @@ JdbcX.prototype.executeUpdateAsync = function() { return executeUpdateAsync.appl
  *
  * @return {Array<Array<string>>} An array of arrays containing the result set rows
  *     and columns. If an error occurs, an empty array is returned.
- *
  */
 function queryDatabaseAsync(query, db) {
   var resource = {
@@ -361,9 +368,25 @@ JdbcX.prototype.insertIntoAsync = function() { return insertIntoAsync.apply(this
  * @param {number=} returnType The return type, default - 0:
  *     0 - Returns data as an array of nested objects, where each object represents a row.
  *     1 - Returns data as an object with arrays, where each array represents a column.
- * @param {queryFilter} filter The filter object to apply to the query, which can contain
- *     properties such as `column`, `value`, `value_from`, `value_to`, `toUnixTime`,
- *     `sort`, `direction`, `limit` and `offset`.
+ * @param {queryFilter|queryFilter[]=} filter The filter object or array of objects
+ *     to apply to the query, which contain options:
+ *     - `column`: The name of the column to filter on.
+ *     - `value`: The value to match in the specified column (WHERE '=').
+ *     - `value_from`: The starting value for range-based filtering (WHERE '>').
+ *     - `value_to`: The ending value for range-based filtering (WHERE '<').
+ *     - `toUnixTime`: Indicates whether to convert the dates of the filter
+ *       values to a timestamp (UNIX format).
+ *     - `sort`: The column name to use for sorting.
+ *     - `direction`: The sorting direction
+ *       ('asc' for ascending, 'desc' for descending).
+ *     - `limit`: The maximum number of records to return.
+ *     - `offset`: The number of records to skip before returning results.
+ *     - `like`: Matching. The value to match using LIKE %...%.
+ *     - `notlike`: Matching. The value to exclude using NOT LIKE.
+ *     - `regex`: Matching. The regular expression to match REGEXP.
+ *
+ *   If the `filter` parameter is an array of objects,
+ *   the conditions will be combined using the AND operator.
  * @param {string=} db __Optional__: The name of the database to query.
  *
  * @return {Array<Object>|Object} The data retrieved from the database, either as an
@@ -496,26 +519,35 @@ JdbcX.prototype.getTableAsArrayAsync = function() { return getTableAsArrayAsync.
  * @param {insertOptions=} options Additional options for customizing the insert operation:
  *     - `db`: The name of the database to connect to. If not provided, the default
  *       database is used.
- *     - `autoCommit`: A boolean indicating whether to automatically commit the transaction.
- *       Defaults to `false`.
+ *     - `autoCommit`: A boolean indicating whether to automatically commit
+ *       the transaction. Defaults to `false`.
+ *     - `batchSize`: A positive integer, when autoCommit is enabled, determines
+ *       the number of records that will be grouped and sent to the database
+ *       in a single batch operation. The default value is `100`.
  *     - `updateDuplicates` or `updateDupls`: A boolean indicating whether to update
  *       duplicate entries if they exist in the table. Defaults to `false`.
  *     - `detectTypes`: A boolean indicating whether to automatically detect
- *       the data types of the columns in the table and use them for the insert
- *       operation. If set to `true`, the library will analyze the data being 
- *       inserted and determine the appropriate data types for each column.
+ *       the data types in the array and use them for the insert operation.
+ *       If set to `true`, the library will analyze the data being inserted
+ *       and determine the appropriate data types for each column.
  *       If detectTypes is set to `false`, all data will be treated as strings,
- *       regardless of the `stringTypes` option. Defaults to `true`.
+ *       regardless of the `stringTypes` option.
+ *       Enable it if you use date values in the date format, blob objects,
+ *       boolean values, or if you need strict compliance with data types.
+ *       Defaults to `true`.
  *     - `stringTypes`: An array of data types that should be treated as strings
- *       (e.g., `integer`, `double`, `object` | `array`, `boolean`) when
+ *       (e.g., `integer`, `double`, `object`, `array`, `boolean`) when
  *       the `detectTypes` option is enabled.
  * @return {boolean} A boolean value indicating whether the data was successfully
  *     inserted into the database table.
  */
 function insertArrayToDBTableAsync(table, columns, data, options) {
+  var asyncData = (options && options.detectTypes)
+      ? {'Async': addMetaData_(data)}
+      : data;
   var resource = {
       functionName: "_insertArrayToDBTable",
-      arguments: Array.prototype.slice.call(arguments),
+      arguments: [table, columns, asyncData, options],
       tag: 'jdbcx'
   };
   return this.DoOneTask(resource);
