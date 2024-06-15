@@ -31,11 +31,11 @@
  *     - `server` __Required__. The server address of the database.
  *       Do not include `https://`.
  *     - `port` __Required__. The server port on which the database is running.
- *       Common ports are 3306 for MySQL, 5432 - PostgreSQL, and 1433 for SQL Server.
+ *       Common ports are 3306 for MySQL and 1433 for SQL Server.
  *     - `db` __Required__. The default database to connect to.
  *     - `prefix` __Required__. The prefix for the connection URL, which indicates
- *       the type of database. For example, 'jdbc:mysql://', 'jdbc:postgresql://',
- *       'jdbc:google:mysql://', or 'jdbc:sqlserver://'.
+ *       the type of database. For example, 'jdbc:mysql://', 'jdbc:google:mysql://',
+ *       or 'jdbc:sqlserver://'.
  *     - `userName` __Required__. The username to pass to the database.
  *     - `password` __Required__. The user's password.
  *     - `showTime` Optional flag to show the execution time of queries.
@@ -502,7 +502,7 @@ function getConnection(config) {
                   "WHERE TABLE_TYPE = 'BASE TABLE'";
           break;
         default:
-          throw new Error("Unsupported database type");
+          throw new ValidationError("Unsupported database type");
       }
 
       return this._queryDatabase(query, db).map(function(row) {
@@ -532,7 +532,7 @@ function getConnection(config) {
      *     If an error occurs or no columns are found, an empty array is returned.
      */
     JdbcX.prototype._getListColumns = function(table, db) {
-      if (!table) throw new Error("Value of the 'table' is not defined.");
+      if (!table) throw new ValidationError("Value of the 'table' is not defined.");
       var query;
       switch (this.config.prefix) {
         case 'jdbc:mysql://':
@@ -550,7 +550,7 @@ function getConnection(config) {
                   "WHERE TABLE_NAME = '" + table + "'";
           break;
         default:
-          throw new Error("Unsupported database type");
+          throw new ValidationError("Unsupported database type");
       }
       return this._queryDatabase(query, db).map(function(row) {
         return row[0];
@@ -583,11 +583,10 @@ function getConnection(config) {
      *     no index information is found, an empty array is returned.
      */
     JdbcX.prototype._getIndexInfo = function(table, db, returnObject) {
-      if (!table) throw new Error("Table parameter is required.");
+      if (!table) throw new ValidationError("Table parameter is required.");
       if (this.config.prefix !== 'jdbc:google:mysql://' && 
           this.config.prefix !== 'jdbc:mysql://') {
-        throw new Error("Unsupported database type");
-        // returnObject = false;
+        throw new ValidationError("Unsupported database type");
       }
 
       var query = "SHOW INDEX FROM " + table;
@@ -655,7 +654,7 @@ function getConnection(config) {
           query = "SELECT name, value_in_use FROM sys.configurations";
           break;
         default:
-          throw new Error("Unsupported database type");
+          throw new ValidationError("Unsupported database type");
       }
       var qresult = this._queryDatabase(query, null);
       
@@ -690,7 +689,7 @@ function getConnection(config) {
      *     If an error occurs or no grants are found, an empty array is returned.
      */
     JdbcX.prototype._getUserGrants = function(user) {
-      if (!user) throw new Error("User parameter is required.");
+      if (!user) throw new ValidationError("User parameter is required.");
       var query;
       switch (this.config.prefix) {
         case 'jdbc:mysql://':
@@ -714,7 +713,7 @@ function getConnection(config) {
                   "grantee_principal_id = USER_ID('" + user + "')";
           break;
         default:
-          throw new Error("Unsupported database type");
+          throw new ValidationError("Unsupported database type");
       }
 
       return this._queryDatabase(query, null);
@@ -783,7 +782,7 @@ function getConnection(config) {
     JdbcX.prototype._getProcessListMySQL = function(returnObject) {
       if (this.config.prefix !== 'jdbc:google:mysql://' &&
           this.config.prefix !== 'jdbc:mysql://') {
-        throw new Error("Unsupported database type");
+        throw new ValidationError("Unsupported database type");
       }
       var query = "SHOW PROCESSLIST";
       var qresult = this._queryDatabase(query, null);
@@ -838,10 +837,102 @@ function getConnection(config) {
           query = "SELECT name FROM sys.server_principals WHERE type_desc = 'SQL_LOGIN'";
           break;
         default:
-          throw new Error("Unsupported database type");
+          throw new ValidationError("Unsupported database type");
       }
 
       return this._queryDatabase(query, null);
+    };
+
+
+    // NUMBER OF DATA ROWS
+    /**
+     * ### Description
+     * Executes a given SQL query on the specified database and returns
+     * the count of records that match the specified criteria.
+     *
+     * ### Example
+     * ```js
+     * const conn = JdbcX.getConnection(config);
+     * const sql = "SELECT * FROM `example_table` WHERE `user_id` BETWEEN '100' AND '120'";
+     * const rowCount = conn.getRowCount(sql, 'myDatabase');
+     * console.log(rowCount); // Outputs the count of matching records (21)
+     * ```
+     *
+     * @param {string} sql The SQL statement to execute for counting records.
+     * @param {string=} [db] __Optional__: The name of the database to connect to.
+     *
+     * @return {number} The count of records matching the criteria.
+     *     Returns `0` if no records match.
+     * @throws {ValidationError} Throws an error if the SQL statement
+     *     is not defined or does not contain a valid `SELECT` clause.
+     */
+    JdbcX.prototype._getRowCount = function(sql, db) {
+      if (!sql) throw new ValidationError(
+        "The 'sql' parameter is not defined.");
+      var regex = /SELECT[\s\S]*?FROM/i;
+      if (regex.test(sql)) {
+        sql.replace(regex, 'SELECT COUNT(*) AS count FROM');
+      } else {
+        throw new ValidationError(
+          "The 'sql' parameter must contain a valid 'SELECT ... FROM' clause.");
+      }
+
+      var count = 0;
+
+      try {
+        var stmt = this.getConnection(db).prepareStatement(sql);
+        var rs = stmt.executeQuery();
+        if (rs.next()) count = rs.getInt('count');
+        if (this.showLogs) L("The query executed successfully.", sql);
+      }
+      catch (err) {
+        this.LogError(err, "Error executing query:", sql);
+      }
+      finally {
+        if (rs) rs.close();
+        if (stmt) stmt.close();
+        this.LogTime();
+      }
+
+      return count;
+    };
+
+
+    /**
+     * ### Description
+     * Returns the count of records in a specified table that match
+     * the given filter criteria.
+     *
+     * ### Example
+     * ```js
+     * const conn = JdbcX.getConnection(config);
+     * const table = "example_table";
+     * const filter = {
+     *   column: "user_id",
+     *   value_from: 100,
+     *   value_to: 120
+     * }
+     * const rowCount = conn.getRowCountByFilter(table, filter);
+     * console.log(rowCount); // Outputs the count of matching records (21)
+     * ```
+     *
+     * @param {string} table The name of the database table to query.
+     * @param {queryFilter|queryFilter[]=} [filter] The filter object or array
+     *     of objects to apply to the query, which can contain properties such as
+     *     `column`, `value`, `value_from`, `value_to`, `toUnixTime`, `sort`,
+     *     `direction`, `limit`, `offset` and other. See: queryFilter spec.
+     * @param {string=} [db] __Optional__: The name of the database to connect to.
+     * @return {number} The count of records matching the criteria.
+     *     Returns `0` if no records match.
+     * @throws {ValidationError} Throws an error if the table name
+     *     is not defined.
+     */
+    JdbcX.prototype._getRowCountByFilter = function(table, filter, db) {
+      if (!table) throw new ValidationError(
+        "The 'table' parameter is not defined.");
+      if (!filter) filter = {};
+      var sql = generateQuery(this.config.prefix, table, '', filter, true);
+      return this._getRowCount(sql, db);
     };
 
 
@@ -868,7 +959,7 @@ function getConnection(config) {
      * @returns {any} The result of the `CREATE DATABASE` SQL statement.
      */
     JdbcX.prototype._createDatabase = function(db) {
-      if (!db) throw new Error("DB parameter is required.");
+      if (!db) throw new ValidationError("DB parameter is required.");
       LW('Please ensure you have the necessary permissions to create the database.');
       return this._execute('CREATE DATABASE IF NOT EXISTS ' + db, null, true);
     };
@@ -904,10 +995,16 @@ function getConnection(config) {
      * @returns {number} The row count for SQL Data Manipulation Language (DML) statements (1).
      */
     JdbcX.prototype._insertInto = function(table, columns, values, db) {
-      if (!table) throw new Error("Table parameter is required.");
-      if (!Array.isArray(columns) || columns.length === 0) throw new Error("columns parameter must be a non-empty array.");
-      if (!Array.isArray(values) || values.length === 0) throw new Error("values parameter must be a non-empty array.");
-      if (columns.length !== values.length) throw new Error("columns and values must have the same length.");
+      if (!table) throw new ValidationError("Table parameter is required.");
+
+      if (!Array.isArray(columns) || columns.length === 0)
+        throw new ValidationError("columns parameter must be a non-empty array.");
+
+      if (!Array.isArray(values) || values.length === 0)
+        throw new ValidationError("values parameter must be a non-empty array.");
+
+      if (columns.length !== values.length)
+        throw new ValidationError("columns and values must have the same length.");
 
       var sqlColumns = columns.map(function(col) {
         return '`' + col + '`';
@@ -947,23 +1044,23 @@ function getConnection(config) {
      * @param {string=} [db] The name of the database to connect to.
      *     If not provided, the default database is used.
      *
-     * @throws {Error} If the `table` parameter is not provided.
+     * @throws {ValidationError} If the `table` parameter is not provided.
      *
      * @returns {boolean} `true` if the table was successfully deleted, otherwise `false`.
      */
     JdbcX.prototype._deleteTable = function(table, db) {
-      if (!table) throw new Error("Table parameter is required.");
+      if (!table) throw new ValidationError("Table parameter is required.");
       db = db || this.defaultDb;
       return this._execute("DROP TABLE `" + db + "`.`" + table + "`", db);
     };
 
 
 
-   // ===============
-   //    EXTENDED   #
-   // ===============
-   //    Read       #
-   // ===============
+  // ===============
+  //    EXTENDED   #
+  // ===============
+  //    Read       #
+  // ===============
 
 
     // renaming: getDataFromCloudDB --> getDataFromMySQL --> retrieveDataFromDB
@@ -992,10 +1089,11 @@ function getConnection(config) {
      * @param {number=} [returnType=0] The return type:
      *     0 - Returns data as an array of nested objects, where each object represents a row.
      *     1 - Returns data as an object with arrays, where each array represents a column.
-     * @param {queryFilter} filter The filter object to apply to the query, which can contain
-     *     properties such as `column`, `value`, `value_from`, `value_to`, `toUnixTime`,
-     *     `sort`, `direction`, `limit` and `offset`.
-     * @param {string} db The name of the database to query.
+     * @param {queryFilter|queryFilter[]=} [filter] The filter object or array
+     *     of objects to apply to the query, which can contain properties such as
+     *     `column`, `value`, `value_from`, `value_to`, `toUnixTime`, `sort`,
+     *     `direction`, `limit`, `offset` and other. See: queryFilter spec.
+     * @param {string=} [db] The name of the database to query.
      *
      * @return {Array<Object>|Object} The data retrieved from the database, either as an
      *     array of arrays or an array of objects based on the return type.
@@ -1195,9 +1293,9 @@ function getConnection(config) {
     };
 
 
-   // =============
-   //    Insert   #
-   // =============
+  // =============
+  //    Insert   #
+  // =============
 
     /**
      * ### Description
@@ -1205,7 +1303,7 @@ function getConnection(config) {
      * The function constructs an SQL INSERT query based on the provided table name,
      * header, and data, allowing customization options such as auto-commit and
      * handling of duplicate entries.
-     * 
+     *
      * ### Example
      * ```js
      * var conn = JdbcX.getConnection(config);
@@ -1220,7 +1318,7 @@ function getConnection(config) {
      *   autoCommit: true,
      *   updateDuplicates: true
      * };
-     * var success = conn.insertArrayToDBTable(table, header, data, options);
+     * var success = conn.insertArrayToDBTable(table, columns, dataRows, options);
      * console.log(success); // Outputs: true if the data was successfully inserted
      * ```
      *
@@ -1230,18 +1328,24 @@ function getConnection(config) {
      * @param {insertOptions=} [options] Additional options for customizing the insert operation:
      *     - `db`: The name of the database to connect to. If not provided, the default
      *       database is used.
-     *     - `autoCommit`: A boolean indicating whether to automatically commit the transaction.
-     *       Defaults to `false`.
+     *     - `autoCommit`: A boolean indicating whether to automatically commit
+     *       the transaction. Defaults to `false`.
+     *     - `batchSize`: A positive integer, when autoCommit is enabled, determines
+     *       the number of records that will be grouped and sent to the database
+     *       in a single batch operation. The default value is `100`.
      *     - `updateDuplicates` or `updateDupls`: A boolean indicating whether to update
      *       duplicate entries if they exist in the table. Defaults to `false`.
      *     - `detectTypes`: A boolean indicating whether to automatically detect
-     *       the data types of the columns in the table and use them for the insert
-     *       operation. If set to `true`, the library will analyze the data being 
-     *       inserted and determine the appropriate data types for each column.
+     *       the data types in the array and use them for the insert operation.
+     *       If set to `true`, the library will analyze the data being inserted
+     *       and determine the appropriate data types for each column.
      *       If detectTypes is set to `false`, all data will be treated as strings,
-     *       regardless of the `stringTypes` option. Defaults to `true`.
+     *       regardless of the `stringTypes` option.
+     *       Enable it if you use date values in the date format, blob objects,
+     *       boolean values, or if you need strict compliance with data types.
+     *       Defaults to `true`.
      *     - `stringTypes`: An array of data types that should be treated as strings
-     *       (e.g., `integer`, `double`, `object` | `array`, `boolean`) when
+     *       (e.g., `integer`, `double`, `object`, `array`, `boolean`) when
      *       the `detectTypes` option is enabled.
      * @return {boolean} A boolean value indicating whether the data was successfully
      *     inserted into the database table.
@@ -1249,6 +1353,57 @@ function getConnection(config) {
     JdbcX.prototype._insertArrayToDBTable = function(table, columns, data, options) {
 
       if (this.showLogs) console.log('Inserting an Array into a Database Table.');
+
+      function SetValue(stmt, index, value, type) {
+        if (typeAsString(type)) {
+          if (type === 'object' || type === 'array') {
+            stmt.setString(index, JSON.stringify(value));
+          } else {
+            stmt.setString(index, String(value));
+          }
+        } else {
+          switch (type) {
+            case 'boolean':
+              stmt.setBoolean(index, value);
+              break;
+            case 'integer':
+              stmt.setInt(index, value);
+              break;
+            case 'double':
+              stmt.setDouble(index, value);
+              break;
+            case 'string':
+              stmt.setString(index, value);
+              break;
+            case 'date':
+              try {
+                // value = new Date(value);
+                stmt.setTimestamp(index, dateTimeFormat(value, 'jdbc'));
+              } catch (e) {
+                stmt.setString(index, dateTimeFormat(value, 'yyyy-MM-dd HH:mm:ss'));
+              }
+              break;
+            case 'blob':
+              stmt.setBytes(index, value.getBytes());
+              break;
+            case 'array':
+            case 'object':
+              try {
+                stmt.setObject(index, JSON.stringify(value));
+              } catch (e) {
+                stmt.setString(index, JSON.stringify(value));
+              }
+              break;
+            case 'undefined':
+            case 'null':
+            case 'none':
+              stmt.setNull(index, java_.sql.Types.NULL);
+              break;
+            default:
+              stmt.setString(index, String(value));
+          }
+        }
+      }
 
       function LogSQLRow_(q, v, l_) {
         if (!l_) return;
@@ -1267,115 +1422,101 @@ function getConnection(config) {
 
       options = options || {};
       var detectTypes = options.detectTypes !== false;
-      var stringTypes = options.stringTypes || []; // 'integer', 'double', 'object'|'array', 'boolean'
+      var stringTypes = options.stringTypes || []; // 'integer', 'double', 'object', 'array', 'boolean'
       var typeAsString = function(type) {
           return stringTypes.indexOf(type) !== -1;
       };
       var db = options.db;
       var autoCommit = options.autoCommit || false;
+      var batchSize = options.batchSize || 100;
       var updateDuplicates = options.updateDupls || options.updateDuplicates || false;
+      var conn, stmt, result, isAsync = false;
 
+      var headerString = columns.map(function(col) {
+        return '`' + col + '`';
+      }).join(', ');
 
-      var conn, stmt, result = false;
+      var placeholders = columns.map(function() {
+        return '?';
+      }).join(', ');
+
+      var insertQuery = "INSERT INTO `" + table + "` (" + headerString + 
+                        ") VALUES (" + placeholders + ")";
+
+      if (updateDuplicates) {
+        var updateFields = columns.map(function(field) {
+          return "`" + field + "` = VALUES(`" + field + "`)";
+        }).join(', ');
+        insertQuery += " ON DUPLICATE KEY UPDATE " + updateFields;
+      }
+
+      if (data && data.hasOwnProperty('Async')) {
+        data = data.Async;
+        isAsync = true;
+      }
 
       try {
         conn = this.getConnection(db);
         conn.setAutoCommit(autoCommit);
-        
-        var headerString = columns.map(function(col) {
-          return '`' + col + '`';
-        }).join(', ');
-
-        var placeholders = columns.map(function() {
-          return '?';
-        }).join(', ');
-
-        var insertQuery = "INSERT INTO `" + table + "` (" + headerString + 
-                          ") VALUES (" + placeholders + ")";
-
-        if (updateDuplicates) {
-          var updateFields = columns.map(function(field) {
-            return "`" + field + "` = VALUES(`" + field + "`)";
-          }).join(', ');
-          insertQuery += " ON DUPLICATE KEY UPDATE " + updateFields;
-        }
 
         stmt = conn.prepareStatement(insertQuery);
+        
+        if (data.length >= 20 && this.showLogs) {
+          L("Logs for each row are disabled because"+
+            "there are more than 20 rows of data.");
+        }
 
         for (var i = 0; i < data.length; i++) {
           var rowData = data[i];
 
           for (var j = 0; j < columns.length; j++) {
-            var value = (rowData[j] !== undefined && rowData[j] !== "") ? rowData[j] : null;
-            if (value === null) {
-              stmt.setNull(j + 1, java_.sql.Types.NULL);
+            
+            var value;
+            var metaType;
+
+            if (isAsync) {
+              if (rowData[j] !== undefined && rowData[j] !== "") {
+                metaType = rowData[j].metaType;
+                value = rowData[j].value;
+              } else {
+                metaType = 'null';
+                value = null;
+              }
             } else {
-              if (detectTypes) {
-                  switch (typeof value) {
-                      case 'boolean':
-                        if (typeAsString('boolean')) {
-                          stmt.setString(j + 1, String(value));
-                        } else {
-                          stmt.setBoolean(j + 1, value);
-                        }
-                        break;
+              value = (rowData[j] !== undefined && rowData[j] !== "")
+                ? rowData[j]
+                : null;
+            }
 
-                      case 'number':
-                        if (Math.floor(value) === value) {
-                          if (typeAsString('integer')) {
-                            stmt.setString(j + 1, String(value));
-                          } else {
-                            stmt.setInt(j + 1, value);
-                          }
-                        } else {
-                          if (typeAsString('double')) {
-                            stmt.setString(j + 1, String(value));
-                          } else {
-                            stmt.setDouble(j + 1, value);
-                          }
-                        }
-                        break;
+            if (isAsync) {
+              if (metaType === 'blob') {
+                value = Utilities.newBlob(value);
+              } else if (metaType === 'date') {
+                // metaType = "string";
+                value = dateTimeFormat(value, 'date');
+              }
+            }
 
-                      case 'string':
-                        stmt.setString(j + 1, value);
-                        break;
-
-                      case 'object':
-                        if (value instanceof Date || typeof value.setHours === 'function') {
-                          try {
-                            value = new Date(value);
-                            stmt.setString(j + 1, dateTimeFormat(value, 'yyyy-MM-dd HH:mm:ss'));
-                          } catch (e) {
-                            stmt.setString(j + 1, value);
-                          }
-                        } else {
-                          if (typeof value.getBytes === 'function') {
-                            stmt.setBytes(j + 1, value.getBytes());
-                          } else {
-                            if (typeAsString('array') || typeAsString('object')) {
-                              stmt.setString(j + 1, JSON.stringify(value));
-                            } else {
-                              try {
-                                stmt.setObject(j + 1, JSON.stringify(value));
-                              } catch (e) {
-                                stmt.setString(j + 1, JSON.stringify(value));
-                              }
-                            }
-                          }
-                        }
-                        break;
-
-                      default:
-                      stmt.setString(j + 1, String(value));
-                      break;
-                  }
+            if (detectTypes) {
+              var valueType = isAsync ? metaType : getTypeOf_(value);
+              SetValue(stmt, j + 1, value, valueType);
+            } else {
+              if (value === null) {
+                stmt.setNull(j + 1, java_.sql.Types.NULL);
               } else {
                 stmt.setString(j + 1, value);
               }
             }
+
           }
-          LogSQLRow_(insertQuery, data[i], this.showLogs);
+          if (data.length < 20) {
+            LogSQLRow_(insertQuery, data[i], this.showLogs);
+          }
           stmt.addBatch();
+
+          if (autoCommit && (i + 1) % batchSize === 0) {
+            stmt.executeBatch();
+          }
         }
 
         stmt.executeBatch();
@@ -1384,6 +1525,10 @@ function getConnection(config) {
         result = true;
       }
       catch (err) {
+        if (!autoCommit && conn) {
+          if (this.showLogs) L("Operation failed. Rolling back changes.");
+          conn.rollback();
+        }
         try {
           var smtd = stmt.getParameterMetaData();
           var metaData = stmt.toString() + " count: " + smtd.getParameterCount();
