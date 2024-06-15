@@ -10,8 +10,12 @@ function updatesEnable_STABLE() {
   var trigger = ScriptApp.newTrigger("t_updateStable_").timeBased()
     .everyDays(14).atHour(7)
     .create().getUniqueId();
-  if (trigger)
+  if (trigger) {
     setSetting_("updates", trigger);
+    console.log("Updates enabled successfully.");
+  } else {
+    console.log("Failed to enable script updates.");
+  }
 }
 
 
@@ -27,8 +31,12 @@ function updatesEnable_BETA() {
   var trigger = ScriptApp.newTrigger("t_updateBeta_").timeBased()
     .everyDays(7).atHour(7)
     .create().getUniqueId();
-  if (trigger)
+  if (trigger) {
     setSetting_("updates", trigger);
+    console.log("Updates enabled successfully.");
+  } else {
+    console.log("Failed to enable script updates.");
+  }
 }
 
 
@@ -76,7 +84,6 @@ function deleteTriggers_() {
  *
  * Calls the `update JDBCX()` function and provides
  * the script ID for the "stable" version of the JDBCX script.
- * @name _
  */
 function t_updateStable_() {
   updateJDBCX_("1AMYNAA96kZTenVVNqjDXtyZx7h6PcQHIbFvnt1TxqbHIuqBbLbmMQk7l");
@@ -88,7 +95,6 @@ function t_updateStable_() {
  *
  * Calls the `update JDBCX()` function and provides
  * the script ID for the "beta" version of the JDBCX script.
- * @name _
  */
 function t_updateBeta_() {
   // DO NOT USE IT FOR WORK.
@@ -103,7 +109,7 @@ function t_updateBeta_() {
  * @throws {Error} If the script ID is not defined.
  */
 function updateJDBCX_(script_id) {
-  if (!script_id) throw new Error('Script ID is not defined.');
+  if (!script_id) throw new ValidationError('Script ID is not defined.');
 
   var updater = ScriptSync5.assignTemplate(script_id);
   var match = updater.compareFilesByContent("WhatsNew", "WhatsNew");
@@ -117,7 +123,6 @@ function updateJDBCX_(script_id) {
         updater.AddNewFile(item.file);
       }
     });
-    updater.deleteFile("version_history");
 
     if (updater.result) {
       var status = updater.commit();
