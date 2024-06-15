@@ -91,10 +91,11 @@ JdbcX.prototype.executeQuery = function() { return executeQuery.apply(this, argu
  * @memberof {JdbcX}
  *
  * @param {string} sql The SQL update statement to execute.
- * @param {string=} db The name of the database to execute the update against.
+ * @param {string=} db __Optional__: The name of the database to execute
+ *     the update against.
  *
  * @returns {number} Either (1) the row count for SQL Data Manipulation Language (DML) 
- * statements or (2) 0 for SQL statements that return nothing.
+ *     statements or (2) 0 for SQL statements that return nothing.
  */
 function executeUpdate(sql, db) { return this._executeUpdate.apply(this, arguments) }
 JdbcX.prototype.executeUpdate = function() { return executeUpdate.apply(this, arguments) };
@@ -361,11 +362,89 @@ function getUserList() { return this._getUserList.apply(this, arguments) }
 JdbcX.prototype.getUserList = function() { return getUserList.apply(this, arguments) };
 
 
+// NUMBER OF DATA ROWS
+/**
+ * ### Description
+ * Executes a given SQL query on the specified database and returns
+ * the count of records that match the specified criteria.
+ *
+ * ### Example
+ * ```js
+ * const conn = JdbcX.getConnection(config);
+ * const sql = "SELECT * FROM `example_table` WHERE `user_id` BETWEEN '100' AND '120'";
+ * const rowCount = conn.getRowCount(sql, 'myDatabase');
+ * console.log(rowCount); // Outputs the count of matching records (21)
+ * ```
+ * @memberof {JdbcX}
+ *
+ * @param {string} sql The SQL statement to execute for counting records.
+ * @param {string=} db __Optional__: The name of the database to connect to.
+ *
+ * @return {number} The count of records matching the criteria.
+ *     Returns `0` if no records match.
+ * @throws {ValidationError} Throws an error if the SQL statement
+ *     is not defined or does not contain a valid `SELECT` clause.
+ */
+function getRowCount(sql, db) { return this._getRowCount.apply(this, arguments) }
+JdbcX.prototype.getRowCount = function() { return getRowCount.apply(this, arguments) };
+
+
+/**
+ * ### Description
+ * Returns the count of records in a specified table that match
+ * the given filter criteria.
+ *
+ * ### Example
+ * ```js
+ * const conn = JdbcX.getConnection(config);
+ * const table = "example_table";
+ * const filter = {
+ *   column: "user_id",
+ *   value_from: 100,
+ *   value_to: 120
+ * }
+ * const rowCount = conn.getRowCountByFilter(table, filter);
+ * console.log(rowCount); // Outputs the count of matching records (21)
+ * ```
+ * @memberof {JdbcX}
+ *
+ * @param {string} table The name of the database table to query.
+ * @param {queryFilter|queryFilter[]=} filter The filter object or array of objects
+ *     to apply to the query, which contain options:
+ *     - `column`: The name of the column to filter on.
+ *     - `value`: The value to match in the specified column (WHERE '=').
+ *     - `value_from`: The starting value for range-based filtering (WHERE '>').
+ *     - `value_to`: The ending value for range-based filtering (WHERE '<').
+ *     - `toUnixTime`: Indicates whether to convert the dates of the filter
+ *       values to a timestamp (UNIX format).
+ *     - `sort`: The column name to use for sorting.
+ *     - `direction`: The sorting direction
+ *       ('asc' for ascending, 'desc' for descending).
+ *     - `limit`: The maximum number of records to return.
+ *     - `offset`: The number of records to skip before returning results.
+ *     - `like`: Matching. The value to match using LIKE %...%.
+ *     - `notlike`: Matching. The value to exclude using NOT LIKE.
+ *     - `regex`: Matching. The regular expression to match REGEXP.
+ *
+ *   If the `filter` parameter is an array of objects,
+ *   the conditions will be combined using the AND operator.
+ * @param {string=} db __Optional__: The name of the database to connect to.
+ *
+ * @return {number} The count of records matching the criteria.
+ *     Returns `0` if no records match.
+ * @throws {ValidationError} Throws an error if the table name
+ *     is not defined.
+ */
+function getRowCountByFilter(table, filter, db) { return this._getRowCountByFilter.apply(this, arguments) }
+JdbcX.prototype.getRowCountByFilter = function() { return getRowCountByFilter.apply(this, arguments) };
+
+
 // =============
 //    CREATE   #
 // =============
 
 /**
+ * ### Description
  * Creates a new database if it does not already exist.
  *
  * ### Example
@@ -388,6 +467,7 @@ JdbcX.prototype.createDatabase = function() { return createDatabase.apply(this, 
 
 
 /**
+ * ### Description
  * Inserts a record into the specified database table.
  *
  * ### Examples
@@ -426,6 +506,7 @@ JdbcX.prototype.insertInto = function() { return insertInto.apply(this, argument
 // =============
 
 /**
+ * ### Description
  * Deletes a specified table from a database.
  *
  * ### Example
@@ -483,10 +564,26 @@ JdbcX.prototype.deleteTable = function() { return deleteTable.apply(this, argume
  * @param {number=} returnType The return type, default - 0:
  *     0 - Returns data as an array of nested objects, where each object represents a row.
  *     1 - Returns data as an object with arrays, where each array represents a column.
- * @param {queryFilter} filter The filter object to apply to the query, which can contain
- *     properties such as `column`, `value`, `value_from`, `value_to`, `toUnixTime`,
- *     `sort`, `direction`, `limit` and `offset`.
- * @param {string} db The name of the database to query.
+ * @param {queryFilter|queryFilter[]=} filter The filter object or array of objects
+ *     to apply to the query, which contain options:
+ *     - `column`: The name of the column to filter on.
+ *     - `value`: The value to match in the specified column (WHERE '=').
+ *     - `value_from`: The starting value for range-based filtering (WHERE '>').
+ *     - `value_to`: The ending value for range-based filtering (WHERE '<').
+ *     - `toUnixTime`: Indicates whether to convert the dates of the filter
+ *       values to a timestamp (UNIX format).
+ *     - `sort`: The column name to use for sorting.
+ *     - `direction`: The sorting direction
+ *       ('asc' for ascending, 'desc' for descending).
+ *     - `limit`: The maximum number of records to return.
+ *     - `offset`: The number of records to skip before returning results.
+ *     - `like`: Matching. The value to match using LIKE %...%.
+ *     - `notlike`: Matching. The value to exclude using NOT LIKE.
+ *     - `regex`: Matching. The regular expression to match REGEXP.
+ *
+ *   If the `filter` parameter is an array of objects,
+ *   the conditions will be combined using the AND operator.
+ * @param {string=} db __Optional__: The name of the database to query.
  *
  * @return {Array<Object>|Object} The data retrieved from the database, either as an
  *     array of arrays or an array of objects based on the return type.
@@ -513,10 +610,11 @@ JdbcX.prototype.retrieveDataFromDB = function() { return retrieveDataFromDB.appl
  * console.log(data); // Outputs: [{ id: "1", name: "John" }, { id: "2", name: "Jane" }]
  * ```
  * @memberof {JdbcX}
+ *
  * @param {string} sql_query The SQL query to be executed.
  * @param {Array<string>} columns The columns to retrieve, used for validation and
  *     restructuring the query in case of errors.
- * @param {string} db The name of the database to query.
+ * @param {string=} db __Optional__: The name of the database to query.
  *
  * @return {Array<object>} An array of objects, where each object represents a row of
  *     data with key-value pairs for column names and their corresponding values.
@@ -547,7 +645,7 @@ JdbcX.prototype.getTableAsObject = function() { return getTableAsObject.apply(th
  * @param {string} sql_query The SQL query to be executed.
  * @param {Array<string>} columns The columns to retrieve, used for validation and
  *     restructuring the query in case of errors.
- * @param {string} db The name of the database to query.
+ * @param {string=} db __Optional__: The name of the database to query.
  *
  * @return {object} An object containing the results of the query with the following
  *     properties:
@@ -585,7 +683,7 @@ JdbcX.prototype.getTableAsArray = function() { return getTableAsArray.apply(this
  *   autoCommit: true,
  *   updateDuplicates: true
  * };
- * var success = conn.insertArrayToDBTable(table, header, data, options);
+ * var success = conn.insertArrayToDBTable(table, columns, dataRows, options);
  * console.log(success); // Outputs: true if the data was successfully inserted
  * ```
  * @memberof {JdbcX}
@@ -596,18 +694,24 @@ JdbcX.prototype.getTableAsArray = function() { return getTableAsArray.apply(this
  * @param {insertOptions=} options Additional options for customizing the insert operation:
  *     - `db`: The name of the database to connect to. If not provided, the default
  *       database is used.
- *     - `autoCommit`: A boolean indicating whether to automatically commit the transaction.
- *       Defaults to `false`.
+ *     - `autoCommit`: A boolean indicating whether to automatically commit
+ *       the transaction. Defaults to `false`.
+ *     - `batchSize`: A positive integer, when autoCommit is enabled, determines
+ *       the number of records that will be grouped and sent to the database
+ *       in a single batch operation. The default value is `100`.
  *     - `updateDuplicates` or `updateDupls`: A boolean indicating whether to update
  *       duplicate entries if they exist in the table. Defaults to `false`.
  *     - `detectTypes`: A boolean indicating whether to automatically detect
- *       the data types of the columns in the table and use them for the insert
- *       operation. If set to `true`, the library will analyze the data being 
- *       inserted and determine the appropriate data types for each column.
+ *       the data types in the array and use them for the insert operation.
+ *       If set to `true`, the library will analyze the data being inserted
+ *       and determine the appropriate data types for each column.
  *       If detectTypes is set to `false`, all data will be treated as strings,
- *       regardless of the `stringTypes` option. Defaults to `true`.
+ *       regardless of the `stringTypes` option.
+ *       Enable it if you use date values in the date format, blob objects,
+ *       boolean values, or if you need strict compliance with data types.
+ *       Defaults to `true`.
  *     - `stringTypes`: An array of data types that should be treated as strings
- *       (e.g., `integer`, `double`, `object` | `array`, `boolean`) when
+ *       (e.g., `integer`, `double`, `object`, `array`, `boolean`) when
  *       the `detectTypes` option is enabled.
  * @return {boolean} A boolean value indicating whether the data was successfully
  *     inserted into the database table.
